@@ -1,0 +1,21 @@
+
+server 192.168.58.10 {
+    keys { "transfer-key"; };
+};
+
+zone "lab.tdnguyen51.300.ops" {
+    type secondary;
+    primaries {
+        192.168.58.10;
+    };
+    file "/var/cache/bind/db.lab.tdnguyen51.300.ops";
+
+};
+
+zone "58.168.192.in-addr.arpa" {
+    type secondary;
+    primaries {
+        192.168.58.10;
+    };
+    file "/var/cache/bind/db.192.168.58";
+};
