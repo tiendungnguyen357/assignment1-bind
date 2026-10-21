@@ -23,6 +23,7 @@ pipeline {
                     hostname
                     whoami
                     podman --version
+                    trivy --version
                     test -f Dockerfile
                 '''
             }
@@ -34,6 +35,43 @@ pipeline {
                     podman build -f Dockerfile \
                       -t "$REGISTRY/$IMAGE_NAME:$BUILD_NUMBER" .
                 '''
+            }
+        }
+
+        stage('CVE scan') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p reports
+                    rm -f reports/trivy.json reports/trivy.txt
+                    trivy --version > reports/trivy-version.txt
+
+                    scan_dir=$(mktemp -d)
+                    trap 'rm -rf "$scan_dir"' EXIT
+
+                    podman save --format docker-archive \
+                      -o "$scan_dir/image.tar" \
+                      "$REGISTRY/$IMAGE_NAME:$BUILD_NUMBER"
+
+                    trivy image \
+                      --input "$scan_dir/image.tar" \
+                      --scanners vuln \
+                      --exit-code 0 \
+                      --timeout 15m \
+                      --format json \
+                      --output reports/trivy.json
+
+                    trivy convert \
+                      --format table \
+                      --output reports/trivy.txt \
+                      reports/trivy.json
+
+                    cat reports/trivy.txt
+                '''
+                archiveArtifacts(
+                    artifacts: 'reports/*',
+                    fingerprint: true
+                )
             }
         }
 
